@@ -20,15 +20,16 @@
 import sys
 
 import cv2
-
 import numpy as np
 
+from ikalog.scenes.scene import Scene
+from ikalog.utils import *
 
 # Tracker the control tower, (or rainmaker)
 #
 
 
-class TowerTracker(object):
+class ObjectiveTracker(Scene):
     # 720p サイズでの値
     tower_width = 580
     tower_left = 1280 / 2 - tower_width / 2
@@ -81,12 +82,12 @@ class TowerTracker(object):
 
         return xPos_pct
 
-    def match(self, context):
+    def match_no_cache(self, context):
         if context['game']['rule'] is None:
             return None
 
         applicable_modes = [u'ガチヤグラ', u'ガチホコバトル', 'ガチヤグラ', 'ガチホコバトル']
-        if not (context['game']['rule']['name'] in applicable_modes):
+        if not (IkaUtils.rule2text(context['game']['rule']) in applicable_modes):
             return None
 
         xPos_pct = self.tower_pos(context)
@@ -104,7 +105,7 @@ class TowerTracker(object):
             xPos_pct, context['game']['tower']['max'])
         return context['game']['tower']
 
-    def __init__(self):
+    def _init_scene(self):
         self.ui_tower_mask = cv2.imread('masks/ui_tower.png')
         self.ui_tower_mask = self.ui_tower_mask[
             self.tower_line_top:self.tower_line_top + self.tower_line_height, self.tower_left:self.tower_left + self.tower_width]

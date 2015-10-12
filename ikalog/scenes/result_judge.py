@@ -17,16 +17,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import sys
+
 import cv2
 import numpy as np
 
+from ikalog.scenes.scene import Scene
 from ikalog.utils import *
 
 
-class ResultJudge(object):
+class ResultJudge(Scene):
 
-    def match1(self, context):
+    def reset(self):
+        super(ResultJudge, self).reset()
+
+        self._last_event_msec = - 100 * 1000
+
+    def match_no_cache(self, context):
+        if self.is_another_scene_matched(context, 'GameTimerIcon'):
+            return False
+
         frame = context['engine']['frame']
 
         if frame is None:
@@ -48,13 +57,18 @@ class ResultJudge(object):
         img_bar_b_hist = cv2.calcHist([img_bar_b], [0], None, [3], [0, 256])
         raito = img_bar_b_hist[2] / np.sum(img_bar_b_hist)
 
-        if (raito > 0.9):
-            context['game']['judge'] = 'win' if match_win else 'lose'
+        if (raito < 0.9):
+            return False
 
-        return True
+        context['game']['judge'] = 'win' if match_win else 'lose'
 
-    def analyze(self, context):
+        if not self.matched_in(context, 30 * 1000, attr='_last_event_msec'):
+            self._call_plugins('on_result_judge')
+            self._last_event_msec = context['engine']['msec']
 
+        return  True
+
+    def _analyze(self, context):
         win_ko = bool(self.mask_win_ko.match(context['engine']['frame']))
         lose_ko = bool(self.mask_lose_ko.match(context['engine']['frame']))
 
@@ -86,62 +100,13 @@ class ResultJudge(object):
             cv2.imshow('%d: num' % team, img_num_b)
             cv2.imshow('%d: top' % team, img_num_b_top)
 
-    def match_loop_func(self):
+    def dump(self, context):
+        print('%s: matched %s analyzed %s' % \
+            (self.__class__.__name__, self._matched, self._analyzed))
+        print('    Judge: %s' % context['game'].get('judge', None))
+        print('    Knockout: %s' % context['game'].get('knockout', None))
 
-        msec_last = 0
-
-        while True:
-            in_trigger = False
-
-            # シーン外 -> シーンへの突入
-
-            while not in_trigger:
-                context = (yield in_trigger)
-
-                if context['engine']['msec'] < (msec_last + 10 * 1000):
-                    continue
-                in_trigger = self.match1(context)
-
-            # シーン突入した
-
-            msec_start = context['engine']['msec']
-            missed_frames = 0
-
-            context['game']['image_judge'] = context['engine']['frame'].copy()
-
-            # シーン中のループ
-
-            while in_trigger:
-                context = (yield in_trigger)
-                if self.match1(context):
-                    msec_last = context['engine']['msec']
-                    missed_frames = 0
-                    self.analyze(context)
-                else:
-                    missed_frames = missed_frames + 1
-                    if missed_frames > 5:
-                        break
-
-            # シーンから抜けた
-
-            duration = (msec_last - msec_start)
-            print('%s: duration = %d ms' % (self, duration))
-
-            if 1:  # if duration > 2 * 1000:
-                print('raise event')
-                callPlugins = context['engine']['service']['callPlugins']
-                callPlugins('on_result_judge')
-
-    def match(self, context):
-        return self.match_loop.send(context)
-
-    def __init__(self, debug=False):
-        self.match_loop = self.match_loop_func()
-        self.match_loop.send(None)
-
-        self.udemae_recoginizer = UdemaeRecoginizer()
-        self.number_recoginizer = NumberRecoginizer()
-
+    def _init_scene(self, debug=False):
         self.mask_win = IkaMatcher(
             73, 34, 181, 94,
             img_file='masks/result_judge_win.png',
@@ -192,17 +157,4 @@ class ResultJudge(object):
             self.number_recoginizer = None
 
 if __name__ == "__main__":
-    target = cv2.imread(sys.argv[1])
-    obj = ResultJudge(debug=True)
-
-    context = {
-        'engine': {'frame': target},
-        'game': {},
-        'scenes': {},
-    }
-
-    matched = obj.match1(context)
-    analyzed = obj.analyze(context)
-    print(matched)
-    print(context['game'])
-    cv2.waitKey()
+    ResultJudge.main_func()

@@ -19,11 +19,10 @@
 #
 from __future__ import print_function
 
-import cv2
-import os
-import platform
-import re
 import sys
+import os
+import re
+import cv2
 
 import numpy as np
 
@@ -37,10 +36,6 @@ class IkaUtils(object):
         except AttributeError:
             return True
         return False
-
-    @staticmethod
-    def isOSX():
-        return platform.system() == 'Darwin'
 
     @staticmethod
     def dprint(text):
@@ -90,7 +85,7 @@ class IkaUtils(object):
             if unknown is None:
                 unknown = "?"
             return unknown
-        return map['name']
+        return map.id_
 
     @staticmethod
     def rule2text(rule, unknown=None, lang="ja"):
@@ -98,7 +93,7 @@ class IkaUtils(object):
             if unknown is None:
                 unknown = "?"
             return unknown
-        return rule['name']
+        return rule.id_
 
     @staticmethod
     def cropImageGray(img, left, top, width, height):

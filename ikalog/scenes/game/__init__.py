@@ -17,17 +17,3 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-
-from .game.game_start import GameStart
-from .game.game_go_sign import GameGoSign
-from .game.game_kill import GameKill
-from .game.game_dead import GameDead
-from .game.game_finish import GameFinish
-from .game.game_timer_icon import GameTimerIcon
-from .game.game_oob import GameOutOfBound
-from .lobby import Lobby
-from .plaza_user_stat import PlazaUserStat
-from .result_detail import ResultDetail
-from .result_judge import ResultJudge
-from .result_udemae import ResultUdemae
-from .result_gears import ResultGears
